@@ -1,0 +1,18 @@
+# settings.py
+
+# Параметры графики
+
+#16:9 – 1080x620
+#4:3 – 800x600
+
+WINDOW_WIDTH = 1080
+WINDOW_HEIGHT = 620
+FPS = 60
+
+# Параметры управления
+MOUSE_SENSITIVITY = 0.15
+PLAYER_SPEED = 0.05
+SPRINT_SPEED = PLAYER_SPEED * 2
+FLY_SPEED = 0.05
+
+WORLD_SIZE = 4
