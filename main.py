@@ -12,7 +12,7 @@ screen = pygame.display.set_mode((settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
 
 # Настройка OpenGL
 glEnable(GL_DEPTH_TEST)
-glClearColor(0.4, 0.8, 1, 1)  # Чёрный фон
+glClearColor(0.4, 0.8, 1, 1)  # небо
 glMatrixMode(GL_PROJECTION)
 gluPerspective(70, (settings.WINDOW_WIDTH / settings.WINDOW_HEIGHT), 0.1, 100)
 glMatrixMode(GL_MODELVIEW)
