@@ -1,24 +1,25 @@
 import pygame
 from OpenGL.GL import *
-
+import numpy as np
+import settings
 
 class World:
     def __init__(self, size_x, size_y, size_z):
         self.size_x = size_x
         self.size_y = size_y
         self.size_z = size_z
-        self.blocks = [
-            [
-                [
-                    1 if y == 1 else 2 if y == 0 else 0  # Земля на уровне 0, камень на уровне 1
-                    for z in range(size_z)
-                ]
-                for y in range(size_y)
-            ]
-            for x in range(size_x)
-        ]
-
+        
+        # Используем NumPy для более эффективного хранения блоков
+        self.blocks = np.zeros((size_x, size_y, size_z), dtype=np.uint8)
+        
+        # Инициализация земли и камня
+        self.blocks[:, 0, :] = 2  # Камень на уровне 0
+        self.blocks[:, 1, :] = 1  # Земля на уровне 1
+        
         self.textures = self.load_textures()
+        # Создаем display list для кэширования отрисовки
+        self.display_list = None
+        self.needs_update = True
 
     @staticmethod
     def load_textures():
@@ -42,31 +43,58 @@ class World:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         return texture_id
-
+    
+    def update_chunk(self, x=None, y=None, z=None):
+        """Отметить мир или его часть как требующую обновления"""
+        self.needs_update = True
+        
     def draw(self):
+        # Используем display list для кэширования геометрии
+        if self.needs_update or self.display_list is None:
+            if self.display_list is None:
+                self.display_list = glGenLists(1)
+            
+            glNewList(self.display_list, GL_COMPILE)
+            self._render_world()
+            glEndList()
+            self.needs_update = False
+        
+        # Отрисовываем кэшированную геометрию
+        glCallList(self.display_list)
+    
+    def _render_world(self):
+        """Внутренний метод для рендеринга мира"""
         glEnable(GL_TEXTURE_2D)
-        for x in range(self.size_x):
-            for y in range(self.size_y):
-                for z in range(self.size_z):
-                    if self.blocks[x][y][z] != 0:  # Если блок не "воздух"
-                        block_type = self.blocks[x][y][z]
-                        texture_id = self.textures['dirt'] if block_type == 1 else self.textures['stone']
-                    
-                        # Проверяем и рисуем только видимые грани
-                        if y + 1 >= self.size_y or self.blocks[x][y + 1][z] == 0:  # Верхняя грань
-                            self.draw_face(x, y, z, texture_id, "top")
-                        if y - 1 < 0 or self.blocks[x][y - 1][z] == 0:  # Нижняя грань
-                            self.draw_face(x, y, z, texture_id, "bottom")
-                        if z + 1 >= self.size_z or self.blocks[x][y][z + 1] == 0:  # Передняя грань
-                            self.draw_face(x, y, z, texture_id, "front")
-                        if z - 1 < 0 or self.blocks[x][y][z - 1] == 0:  # Задняя грань
-                            self.draw_face(x, y, z, texture_id, "back")
-                        if x - 1 < 0 or self.blocks[x - 1][y][z] == 0:  # Левая грань
-                            self.draw_face(x, y, z, texture_id, "left")
-                        if x + 1 >= self.size_x or self.blocks[x + 1][y][z] == 0:  # Правая грань
-                            self.draw_face(x, y, z, texture_id, "right")
+        
+        # Используем NumPy для быстрого поиска непустых блоков
+        x_coords, y_coords, z_coords = np.where(self.blocks > 0)
+        
+        for i in range(len(x_coords)):
+            x, y, z = x_coords[i], y_coords[i], z_coords[i]
+            block_type = self.blocks[x, y, z]
+            texture_id = self.textures['dirt'] if block_type == 1 else self.textures['stone']
+            
+            # Проверяем и рисуем только видимые грани
+            # Верхняя грань
+            if y + 1 >= self.size_y or self.blocks[x, y + 1, z] == 0:
+                self.draw_face(x, y, z, texture_id, "top")
+            # Нижняя грань
+            if y - 1 < 0 or self.blocks[x, y - 1, z] == 0:
+                self.draw_face(x, y, z, texture_id, "bottom")
+            # Передняя грань
+            if z + 1 >= self.size_z or self.blocks[x, y, z + 1] == 0:
+                self.draw_face(x, y, z, texture_id, "front")
+            # Задняя грань
+            if z - 1 < 0 or self.blocks[x, y, z - 1] == 0:
+                self.draw_face(x, y, z, texture_id, "back")
+            # Левая грань
+            if x - 1 < 0 or self.blocks[x - 1, y, z] == 0:
+                self.draw_face(x, y, z, texture_id, "left")
+            # Правая грань
+            if x + 1 >= self.size_x or self.blocks[x + 1, y, z] == 0:
+                self.draw_face(x, y, z, texture_id, "right")
+                
         glDisable(GL_TEXTURE_2D)
-
 
     @staticmethod
     def draw_face(x, y, z, texture_id, face):
@@ -129,3 +157,28 @@ class World:
             glVertex3f(x + 1, y + 1, z)
 
         glEnd()
+        
+    def set_block(self, x, y, z, block_type):
+        """Установить блок определенного типа в указанной позиции"""
+        if 0 <= x < self.size_x and 0 <= y < self.size_y and 0 <= z < self.size_z:
+            # Если блок не меняется, ничего не делаем
+            if self.blocks[x, y, z] == block_type:
+                return True
+            
+            # Устанавливаем новый тип блока
+            self.blocks[x, y, z] = block_type
+        
+            # Отмечаем, что мир нуждается в обновлении
+            self.needs_update = True
+        
+            # Выводим отладочную информацию
+            if hasattr(settings, 'DEBUG_MODE') and settings.DEBUG_MODE:
+                print(f"Блок установлен: ({x}, {y}, {z}) -> {block_type}")
+            
+            return True
+        return False
+    def get_block(self, x, y, z):
+        """Получить тип блока в указанной позиции"""
+        if 0 <= x < self.size_x and 0 <= y < self.size_y and 0 <= z < self.size_z:
+            return self.blocks[x, y, z]
+        return None

@@ -1,5 +1,5 @@
 # Pyvoxels-engine
-yet another parody on minecraft with python, pygame and pyOpenGL
+yet another parody of minecraft on python, pygame and pyOpenGL
 
 install requirements:
 pip3 install -r requirements.txt
