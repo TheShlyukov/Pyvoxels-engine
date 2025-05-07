@@ -2,7 +2,9 @@
 yet another parody of minecraft on python, pygame and pyOpenGL
 
 install requirements:
+```
 pip3 install -r requirements.txt
+```
 
 run main.py:
 
@@ -10,5 +12,7 @@ run main.py:
 
 2. With terminal:
 
+```
 cd "path to folder"
 python3 main.py
+```
